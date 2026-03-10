@@ -1,0 +1,51 @@
+### Register User
+POST http://localhost:8080/api/register
+Header:
+  Content-Type: application/json
+Body:
+{
+    "username": "akshat21",
+    "password": "Aku1985pika!"
+}
+#### Response
+HTTP/1.1 400 Bad Request
+Content-Type: application/json; charset=utf-8
+Content-Length: 80
+Date: 2026-03-10T09:29:36.232Z
+Duration: 143ms
+
+{
+  "success": false,
+  "error": "DupUser",
+  "message": "This username is already in use."
+}
+####
+
+### Log in User
+POST http://localhost:8080/api/login
+Header:
+  Content-Type: application/json
+Body:
+{
+    "username": "akshat21",
+    "password": "Aku1985pika!"
+}
+#### Response
+HTTP/1.1 201 Created
+Content-Type: application/json; charset=utf-8
+Content-Length: 313
+Date: 2026-03-10T09:41:55.493Z
+Duration: 750ms
+
+{
+  "success": true,
+  "message": "User logged in successfully.",
+  "data": {
+    "user": {
+      "id": "cmmkepbzp00004shy1xpcqgq6",
+      "username": "akshat21"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImNtbWtlcGJ6cDAwMDA0c2h5MXhwY3FncTYiLCJpYXQiOjE3NzMxMzU3MTUsImV4cCI6MTc3MzEzNjMxNX0.BBUDWMdBccyC9SKwvOraNnzDbpoAj_Ko3UwHhALku6E"
+  }
+}
+####
