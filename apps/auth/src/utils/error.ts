@@ -10,22 +10,12 @@ export class DuplicateUsernameError extends BadRequestException {
   }
 }
 
-export class InvalidUsernameError extends BadRequestException {
+export class InvalidCredentialsError extends BadRequestException {
   constructor() {
     super({
       success: false,
-      error: 'InvalidUsername',
-      message: 'No user is registered with provided username.',
-    })
-  }
-}
-
-export class InvalidPasswordError extends BadRequestException {
-  constructor() {
-    super({
-      success: false,
-      error: 'InvalidPassword',
-      message: 'Invalid password was provided.',
+      error: 'InvalidCredentials',
+      message: 'Invalid credentials provided.',
     })
   }
 }
