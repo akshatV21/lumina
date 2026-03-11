@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsString, IsStrongPassword, MinLength } from 'class-validator'
+import { IsEnum, IsNotEmpty, IsString, IsStrongPassword, MinLength } from 'class-validator'
+import { AccountType } from 'generated/prisma/enums'
 
 export class RegisterDto {
   @IsNotEmpty()
@@ -9,4 +10,8 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsStrongPassword()
   password: string
+
+  @IsNotEmpty()
+  @IsEnum(AccountType)
+  type: AccountType
 }

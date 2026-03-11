@@ -19,12 +19,9 @@ export class AuthService {
   async register(data: RegisterDto) {
     try {
       const hashed = await hash(data.password, 10)
-      await this.db.user.create({ data: { username: data.username, password: hashed } })
+      await this.db.user.create({ data: { username: data.username, password: hashed, type: data.type } })
     } catch (err) {
-      if (err.code === this.UNIQUE_CONSTRAINT_CODE) {
-        throw new DuplicateUsernameError()
-      }
-
+      if (err.code === this.UNIQUE_CONSTRAINT_CODE) throw new DuplicateUsernameError()
       throw err
     }
   }

@@ -13,9 +13,18 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AccountType {
+  public
+  private
+}
+
 model User {
   id String @id @default(cuid())
   
   username String @unique
   password String
+
+  bio String?
+
+  type AccountType
 }
