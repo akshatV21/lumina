@@ -26,5 +26,5 @@ model User {
 
   bio String?
 
-  type AccountType
+  type AccountType @default(public)
 }
