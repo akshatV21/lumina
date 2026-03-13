@@ -1,15 +1,23 @@
-import { Controller, Get, Query } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query } from '@nestjs/common'
 import { MediaService } from './media.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
+import { UploadedDto } from './dtos/uploaded.dto'
 
-@Controller()
+@Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
-  @Get('pp/url')
+  @Get('avatar/url')
   @Auth()
-  async httpCreatePPUploadUrl(@Query('ext') ext: string, @AuthUser() user: User): HttpResponse {
-    const data = await this.mediaService.ppUploadURL(ext, user)
-    return { success: true, message: 'Successfully create pp upload url.', data }
+  async httpAvatarUploadUrl(@Query('ext') ext: string, @AuthUser() user: User): HttpResponse {
+    const data = await this.mediaService.avatarUploadURL(ext, user)
+    return { success: true, message: 'Successfully create avatar upload url.', data }
+  }
+
+  @Post('avatar/uploaded')
+  @Auth()
+  async httpAvatarUploaded(@Body() data: UploadedDto, @AuthUser() user: User): HttpResponse {
+    await this.mediaService.avatarUploaded(data.path, user)
+    return { success: true, message: 'Avatar processing started.' }
   }
 }

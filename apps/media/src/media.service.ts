@@ -1,20 +1,28 @@
 import { Injectable } from '@nestjs/common'
 import { StorageService } from './storage.service'
 import { User } from '@app/utils'
-import { CreatePPUploadUrlError } from './error'
+import { AvatarUploadUrlError } from './utils/errors'
+import { BUCKETS } from './utils/constants'
+import { InjectQueue } from '@nestjs/bullmq'
+import { Queue } from 'bullmq'
 
 @Injectable()
 export class MediaService {
-  private ppbucket = 'avatar'
+  constructor(
+    private readonly storage: StorageService,
+    @InjectQueue('avatar') private avatarQueue: Queue,
+  ) {}
 
-  constructor(private readonly storage: StorageService) {}
-
-  async ppUploadURL(ext: string, user: User) {
+  async avatarUploadURL(ext: string, user: User) {
     const path = `temp/${user.id}.${ext}`
 
-    const data = await this.storage.sign(this.ppbucket, path)
-    if (!data) throw new CreatePPUploadUrlError()
+    const data = await this.storage.sign(BUCKETS.AVATAR, path)
+    if (!data) throw new AvatarUploadUrlError()
 
     return data
+  }
+
+  async avatarUploaded(path: string, user: User) {
+    await this.avatarQueue.add('process-avatar', { path, userId: user.id })
   }
 }

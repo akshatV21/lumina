@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 
-export class CreatePPUploadUrlError extends BadRequestException {
+export class AvatarUploadUrlError extends BadRequestException {
   constructor() {
     super({
       success: false,

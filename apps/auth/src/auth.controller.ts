@@ -5,7 +5,7 @@ import { HttpResponse } from './utils/types'
 import { LoginDto } from './dtos/login.dto'
 import { Auth } from '@app/utils'
 
-@Controller()
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

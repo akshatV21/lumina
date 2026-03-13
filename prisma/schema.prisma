@@ -26,5 +26,7 @@ model User {
 
   bio String?
 
+  avatar String?
+
   type AccountType @default(public)
 }
