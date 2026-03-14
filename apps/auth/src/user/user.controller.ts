@@ -5,6 +5,8 @@ import { UserBioDto } from './dtos/bio.dto'
 import { UserTypeDto } from './dtos/type.dto'
 import { FollowDto } from './dtos/follow.dto'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
+import { AcceptRequestDto } from './dtos/accept.dto'
+import { RejectRequestDto } from './dtos/reject.dto'
 
 @Controller('user')
 export class UserController {
@@ -43,5 +45,19 @@ export class UserController {
   async httpGetFollowRequests(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
     const res = await this.userService.requests(query, user)
     return { success: true, message: 'Fetched follow requests successfully.', data: res }
+  }
+
+  @Post('accept')
+  @Auth()
+  async httpAcceptRequest(@Body() data: AcceptRequestDto, @AuthUser() user: User): HttpResponse {
+    await this.userService.accept(data.followerId, user)
+    return { success: true, message: 'Request accepted successfully.' }
+  }
+
+  @Post('reject')
+  @Auth()
+  async httpRejectRequest(@Body() data: RejectRequestDto, @AuthUser() user: User): HttpResponse {
+    await this.userService.reject(data.followerId, user)
+    return { success: true, message: 'Request rejected successfully.' }
   }
 }

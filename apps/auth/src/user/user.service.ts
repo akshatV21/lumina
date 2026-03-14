@@ -3,7 +3,13 @@ import { Injectable } from '@nestjs/common'
 import { UserBioDto } from './dtos/bio.dto'
 import { User } from '@app/utils'
 import { UserTypeDto } from './dtos/type.dto'
-import { AlreadyFollowingError, AlreadyRequestedError, FollowOwnError, UserNotFoundError } from '../utils/error'
+import {
+  AlreadyFollowingError,
+  AlreadyRequestedError,
+  FollowOwnError,
+  RequestNotFoundError,
+  UserNotFoundError,
+} from '../utils/error'
 import { FollowDto } from './dtos/follow.dto'
 import { Prisma } from 'generated/prisma/client'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
@@ -28,7 +34,7 @@ export class UserService {
         type: true,
         followerCount: true,
         followingCount: true,
-        followers: { where: { followerId: user.id, status: 'accepted' } },
+        followers: { where: { followerId: user.id } },
       },
     })
 
@@ -103,8 +109,8 @@ export class UserService {
 
     if (!isPrivate) {
       tasks.push(
-        this.db.user.update({ where: { id: user.id }, data: { followingCount: { increment: 1 } }, select: {} }),
-        this.db.user.update({ where: { id: target.id }, data: { followerCount: { increment: 1 } }, select: {} }),
+        this.db.user.update({ where: { id: user.id }, data: { followingCount: { increment: 1 } } }),
+        this.db.user.update({ where: { id: target.id }, data: { followerCount: { increment: 1 } } }),
       )
     }
 
@@ -135,5 +141,33 @@ export class UserService {
     }
 
     return { requests: requests.map(r => r.follower), cursor: nextCursor }
+  }
+
+  async accept(followerId: string, user: User) {
+    const follow = await this.db.follow.findUnique({
+      where: { followerId_followingId: { followerId: followerId, followingId: user.id } },
+      select: { status: true },
+    })
+
+    if (!follow || follow.status !== 'pending') throw new RequestNotFoundError()
+
+    await this.db.$transaction([
+      this.db.follow.update({
+        where: { followerId_followingId: { followerId: followerId, followingId: user.id } },
+        data: { status: 'accepted' },
+      }),
+      this.db.user.update({ where: { id: followerId }, data: { followingCount: { increment: 1 } } }),
+      this.db.user.update({ where: { id: user.id }, data: { followerCount: { increment: 1 } } }),
+    ])
+  }
+
+  async reject(followerId: string, user: User) {
+    await this.db.follow.deleteMany({
+      where: {
+        followerId: followerId,
+        followingId: user.id,
+        status: 'pending',
+      },
+    })
   }
 }

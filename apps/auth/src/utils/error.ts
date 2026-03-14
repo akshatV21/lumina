@@ -20,7 +20,7 @@ export class InvalidCredentialsError extends BadRequestException {
   }
 }
 
-export class UserNotFoundError extends NotFoundException {
+export class UserNotFoundError extends BadRequestException {
   constructor() {
     super({
       success: false,
@@ -56,6 +56,16 @@ export class FollowOwnError extends BadRequestException {
       success: false,
       error: 'CannotFollowOwn',
       message: 'You cannot follow your own profile.',
+    })
+  }
+}
+
+export class RequestNotFoundError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'RequestNotFound',
+      message: 'No request was found.',
     })
   }
 }

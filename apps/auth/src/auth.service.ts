@@ -38,7 +38,7 @@ export class AuthService {
     if (!valid) throw new InvalidCredentialsError()
 
     const key = this.config.getOrThrow('AUTH_KEY')
-    const token = sign({ id: registered.id }, key, { expiresIn: '600s' })
+    const token = sign({ id: registered.id }, key, { expiresIn: '10h' })
 
     return {
       user: { id: registered.id, username: registered.username },
