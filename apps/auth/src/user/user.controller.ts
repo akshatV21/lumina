@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Patch, Query } from '@nestjs/common'
+import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common'
 import { UserService } from './user.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
 import { UserBioDto } from './dtos/bio.dto'
 import { UserTypeDto } from './dtos/type.dto'
+import { FollowDto } from './dtos/follow.dto'
+import { CursorPaginationDto } from '@app/utils/pagination.dto'
 
 @Controller('user')
 export class UserController {
@@ -27,5 +29,19 @@ export class UserController {
   async httpUpdateType(@Body() data: UserTypeDto, @AuthUser() user: User): HttpResponse {
     await this.userService.type(data, user)
     return { success: true, message: 'User account type updated successfully.' }
+  }
+
+  @Post('follow')
+  @Auth()
+  async httpFollow(@Body() data: FollowDto, @AuthUser() user: User): HttpResponse {
+    await this.userService.follow(data, user)
+    return { success: true, message: 'Follow request successfull.' }
+  }
+
+  @Get('requests')
+  @Auth()
+  async httpGetFollowRequests(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
+    const res = await this.userService.requests(query, user)
+    return { success: true, message: 'Fetched follow requests successfully.', data: res }
   }
 }

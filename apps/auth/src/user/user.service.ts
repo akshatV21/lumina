@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common'
 import { UserBioDto } from './dtos/bio.dto'
 import { User } from '@app/utils'
 import { UserTypeDto } from './dtos/type.dto'
-import { UserNotFoundError } from '../utils/error'
+import { AlreadyFollowingError, AlreadyRequestedError, FollowOwnError, UserNotFoundError } from '../utils/error'
+import { FollowDto } from './dtos/follow.dto'
+import { Prisma } from 'generated/prisma/client'
+import { CursorPaginationDto } from '@app/utils/pagination.dto'
 
 @Injectable()
 export class UserService {
@@ -61,5 +64,76 @@ export class UserService {
       where: { id: user.id },
       data: { type: data.type },
     })
+  }
+
+  async follow(data: FollowDto, user: User) {
+    if (data.targetId === user.id) throw new FollowOwnError()
+
+    const target = await this.db.user.findUnique({
+      where: { id: data.targetId },
+      select: {
+        id: true,
+        type: true,
+        followers: {
+          where: { followerId: user.id },
+          select: { status: true },
+        },
+      },
+    })
+
+    if (!target) throw new UserNotFoundError()
+
+    const isPrivate = target.type === 'private'
+    const alreadyFollowing = target.followers[0]
+
+    if (alreadyFollowing) {
+      if (alreadyFollowing.status === 'accepted') throw new AlreadyFollowingError()
+      else throw new AlreadyRequestedError()
+    }
+
+    const tasks: Prisma.PrismaPromise<any>[] = [
+      this.db.follow.create({
+        data: {
+          followerId: user.id,
+          followingId: target.id,
+          status: isPrivate ? 'pending' : 'accepted',
+        },
+      }),
+    ]
+
+    if (!isPrivate) {
+      tasks.push(
+        this.db.user.update({ where: { id: user.id }, data: { followingCount: { increment: 1 } }, select: {} }),
+        this.db.user.update({ where: { id: target.id }, data: { followerCount: { increment: 1 } }, select: {} }),
+      )
+    }
+
+    await this.db.$transaction(tasks).catch(error => {
+      if (error.code === 'P2002') throw new AlreadyRequestedError()
+      throw error
+    })
+  }
+
+  async requests(pagination: CursorPaginationDto, user: User) {
+    const limit = pagination.limit ?? 15
+
+    const requests = await this.db.follow.findMany({
+      where: { followingId: user.id, status: 'pending' },
+      cursor: pagination.cursor
+        ? { followerId_followingId: { followerId: pagination.cursor, followingId: user.id } }
+        : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: { follower: { select: { id: true, username: true, avatar: true } } },
+      take: limit + 1,
+    })
+
+    let nextCursor: string | null = null
+
+    if (requests.length > limit) {
+      const next = requests.pop()!
+      nextCursor = next.followerId
+    }
+
+    return { requests: requests.map(r => r.follower), cursor: nextCursor }
   }
 }

@@ -29,3 +29,33 @@ export class UserNotFoundError extends NotFoundException {
     })
   }
 }
+
+export class AlreadyFollowingError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'AlreadyFollowing',
+      message: 'You already follow this user.',
+    })
+  }
+}
+
+export class AlreadyRequestedError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'AlreadyRequested',
+      message: 'You already have requested this user.',
+    })
+  }
+}
+
+export class FollowOwnError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'CannotFollowOwn',
+      message: 'You cannot follow your own profile.',
+    })
+  }
+}
