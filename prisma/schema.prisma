@@ -18,6 +18,11 @@ enum AccountType {
   private
 }
 
+enum FollowStatus {
+  pending
+  accepted
+}
+
 model User {
   id String @id @default(cuid())
   
@@ -29,4 +34,36 @@ model User {
   avatar String?
 
   type AccountType @default(public)
+
+  // 'followers' = people who follow THIS user
+  followers Follow[] @relation("UserFollowers")
+  
+  // 'following' = people THIS user is following
+  following Follow[] @relation("UserFollowing")
+
+  postCount Int @default(0)
+  followerCount Int @default(0)
+  followingCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
+}
+
+model Follow {
+  followerId String
+  followingId String
+
+  // The user who clicked the "Follow" button
+  follower    User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  
+  // The user who is receiving the follow
+  following   User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  status      FollowStatus @default(accepted)
+  
+  createdAt   DateTime     @default(now())
+
+  @@id([followerId, followingId])
+
+  @@index([followingId])
 }
