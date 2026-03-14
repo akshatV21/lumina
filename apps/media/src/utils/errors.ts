@@ -4,7 +4,7 @@ export class AvatarUploadUrlError extends BadRequestException {
   constructor() {
     super({
       success: false,
-      error: 'PPUpURLErr',
+      error: 'AvatarUploadURLError',
       message: 'Failed to create an upload url.',
     })
   }

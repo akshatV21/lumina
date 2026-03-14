@@ -1,8 +1,8 @@
 import { DatabaseService } from '@app/database'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Job } from 'bullmq'
-import sharp from 'sharp'
-import crypto from 'crypto'
+import * as sharp from 'sharp'
+import { createHash } from 'crypto'
 import { StorageService } from '../storage.service'
 import { BUCKETS } from '../utils/constants'
 
@@ -23,7 +23,8 @@ export class AvatarProcessor extends WorkerHost {
 
     try {
       const raw = await this.storage.download(BUCKETS.AVATAR, path)
-      const hash = crypto.createHash('sha256').update(raw).digest('hex')
+
+      const hash = createHash('sha256').update(raw).digest('hex')
 
       const image = sharp(raw).rotate()
       await this.validate(image)
@@ -33,23 +34,23 @@ export class AvatarProcessor extends WorkerHost {
       await Promise.all(
         processed.map(p => {
           const outPath = `processed/${hash}-${p.name}.webp`
-          return this.storage.upload(p.buffer, BUCKETS.AVATAR, outPath)
+          return this.storage.upload(p.buffer, BUCKETS.AVATAR, outPath, 'image/webp')
         }),
       )
 
       await this.db.user.update({ where: { id: userId }, data: { avatar: hash } })
-    } catch (error) {
-      throw error
     } finally {
-      await this.storage.delete(BUCKETS.AVATAR, path)
+      await this.storage.delete(BUCKETS.AVATAR, path).catch(() => {})
     }
   }
 
   private async validate(image: sharp.Sharp) {
     const { width, height } = await image.metadata()
 
-    if (!width || !height) throw new Error('Invalid File Provided.')
-    if (width > this.MAX_WIDTH || height > this.MAX_HEIGHT) throw new Error('Invalid File Size.')
+    if (!width || !height) throw new Error('Invalid File Provided. Could not read dimensions.')
+    if (width > this.MAX_WIDTH || height > this.MAX_HEIGHT) {
+      throw new Error(`Invalid File Size. Dimensions ${width}x${height} exceed maximum allowed.`)
+    }
   }
 
   private async processvariants(image: sharp.Sharp) {

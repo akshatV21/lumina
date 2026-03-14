@@ -17,12 +17,29 @@ export class MediaService {
     const path = `temp/${user.id}.${ext}`
 
     const data = await this.storage.sign(BUCKETS.AVATAR, path)
-    if (!data) throw new AvatarUploadUrlError()
 
-    return data
+    if (data.error) {
+      console.log(path)
+      console.log(data.error)
+      throw new AvatarUploadUrlError()
+    }
+
+    return data.data
   }
 
   async avatarUploaded(path: string, user: User) {
-    await this.avatarQueue.add('process-avatar', { path, userId: user.id })
+    await this.avatarQueue.add(
+      'process-avatar',
+      { path, userId: user.id },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 1000, // Starts at 1 second, then 2s, then 4s
+        },
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    )
   }
 }

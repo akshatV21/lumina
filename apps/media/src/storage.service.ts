@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { error } from 'console'
 
 @Injectable()
 export class StorageService {
@@ -15,7 +16,7 @@ export class StorageService {
 
   async sign(bucket: string, path: string) {
     const res = await this.client.storage.from(bucket).createSignedUploadUrl(path, { upsert: true })
-    return res.data
+    return res
   }
 
   async download(bucket: string, path: string) {
@@ -28,11 +29,17 @@ export class StorageService {
     return raw
   }
 
-  async upload(buffer: Buffer, bucket: string, path: string) {
-    return this.client.storage.from(bucket).upload(path, buffer, { upsert: true })
+  async upload(buffer: Buffer, bucket: string, path: string, contentType: string = 'image/webp') {
+    const res = await this.client.storage.from(bucket).upload(path, buffer, { contentType, upsert: true })
+    if (res.error) throw error
+
+    return res.data
   }
 
   async delete(bucket: string, path: string) {
-    return this.client.storage.from(bucket).remove([path])
+    const res = await this.client.storage.from(bucket).remove([path])
+    if (res.error) throw error
+
+    return res.data
   }
 }
