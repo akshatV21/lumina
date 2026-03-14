@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common'
+import { BadRequestException, NotFoundException } from '@nestjs/common'
 
 export class DuplicateUsernameError extends BadRequestException {
   constructor() {
@@ -16,6 +16,16 @@ export class InvalidCredentialsError extends BadRequestException {
       success: false,
       error: 'InvalidCredentials',
       message: 'Invalid credentials provided.',
+    })
+  }
+}
+
+export class UserNotFoundError extends NotFoundException {
+  constructor() {
+    super({
+      success: false,
+      error: 'UserNotFound',
+      message: 'Unable to find user.',
     })
   }
 }
