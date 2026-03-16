@@ -21,6 +21,9 @@ export class AvatarProcessor extends WorkerHost {
   async process(job: Job<any, any, string>): Promise<any> {
     const { path, userId } = job.data
 
+    const user = await this.db.user.findUnique({ where: { id: userId }, select: { avatar: true } })
+    if (!user) return
+
     try {
       const raw = await this.storage.download(BUCKETS.AVATAR, path)
 
@@ -39,6 +42,14 @@ export class AvatarProcessor extends WorkerHost {
       )
 
       await this.db.user.update({ where: { id: userId }, data: { avatar: hash } })
+
+      if (user.avatar) {
+        await Promise.all([
+          this.storage.delete(BUCKETS.AVATAR, `processed/${user.avatar}-lg.webp`),
+          this.storage.delete(BUCKETS.AVATAR, `processed/${user.avatar}-md.webp`),
+          this.storage.delete(BUCKETS.AVATAR, `processed/${user.avatar}-sm.webp`),
+        ]).catch(() => {})
+      }
     } finally {
       await this.storage.delete(BUCKETS.AVATAR, path).catch(() => {})
     }
