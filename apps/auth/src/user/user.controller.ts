@@ -60,4 +60,18 @@ export class UserController {
     await this.userService.reject(data.followerId, user)
     return { success: true, message: 'Request rejected successfully.' }
   }
+
+  @Get('followers')
+  @Auth()
+  async httpGetFollowers(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
+    const res = await this.userService.followers(query, user)
+    return { success: true, message: 'Fetched followers successfully.', data: res }
+  }
+
+  @Get('followings')
+  @Auth()
+  async httpGetFollowings(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
+    const res = await this.userService.followings(query, user)
+    return { success: true, message: 'Fetched followings successfully.', data: res }
+  }
 }

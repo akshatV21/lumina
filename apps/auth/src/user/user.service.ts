@@ -121,7 +121,7 @@ export class UserService {
   }
 
   async requests(pagination: CursorPaginationDto, user: User) {
-    const limit = pagination.limit ?? 15
+    const limit = pagination.limit ?? 20
 
     const requests = await this.db.follow.findMany({
       where: { followingId: user.id, status: 'pending' },
@@ -169,5 +169,51 @@ export class UserService {
         status: 'pending',
       },
     })
+  }
+
+  async followers(pagination: CursorPaginationDto, user: User) {
+    const limit = pagination.limit ?? 20
+
+    const followers = await this.db.follow.findMany({
+      where: { followingId: user.id, status: 'accepted' },
+      cursor: pagination.cursor
+        ? { followerId_followingId: { followerId: pagination.cursor, followingId: user.id } }
+        : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: { followerId: true, follower: { select: { id: true, username: true, avatar: true } } },
+      take: limit + 1,
+    })
+
+    let nextCursor: string | null = null
+
+    if (followers.length > limit) {
+      const next = followers.pop()!
+      nextCursor = next.followerId
+    }
+
+    return { followers: followers.map(f => f.follower), cursor: nextCursor }
+  }
+
+  async followings(pagination: CursorPaginationDto, user: User) {
+    const limit = pagination.limit ?? 20
+
+    const followings = await this.db.follow.findMany({
+      where: { followerId: user.id, status: 'accepted' },
+      cursor: pagination.cursor
+        ? { followerId_followingId: { followerId: user.id, followingId: pagination.cursor } }
+        : undefined,
+      orderBy: { createdAt: 'asc' },
+      select: { followingId: true, following: { select: { id: true, username: true, avatar: true } } },
+      take: limit + 1,
+    })
+
+    let nextCursor: string | null = null
+
+    if (followings.length > limit) {
+      const next = followings.pop()!
+      nextCursor = next.followingId
+    }
+
+    return { followings: followings.map(f => f.following), cursor: nextCursor }
   }
 }

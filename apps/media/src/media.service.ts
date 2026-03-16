@@ -18,11 +18,7 @@ export class MediaService {
 
     const data = await this.storage.sign(BUCKETS.AVATAR, path)
 
-    if (data.error) {
-      console.log(path)
-      console.log(data.error)
-      throw new AvatarUploadUrlError()
-    }
+    if (data.error) throw new AvatarUploadUrlError()
 
     return data.data
   }
