@@ -32,6 +32,7 @@ export class UserService {
         bio: true,
         avatar: true,
         type: true,
+        postCount: true,
         followerCount: true,
         followingCount: true,
         followers: { where: { followerId: user.id } },
@@ -52,6 +53,7 @@ export class UserService {
       stats: {
         followers: profile.followerCount,
         following: profile.followingCount,
+        posts: profile.postCount,
       },
       same: profile.id === user.id,
       followState,

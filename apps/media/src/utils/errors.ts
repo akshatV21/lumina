@@ -9,3 +9,13 @@ export class AvatarUploadUrlError extends BadRequestException {
     })
   }
 }
+
+export class PostUploadUrlError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'PostUploadURLError',
+      message: 'Failed to create an upload url.',
+    })
+  }
+}

@@ -23,6 +23,16 @@ enum FollowStatus {
   accepted
 }
 
+enum PostStatus {
+  processing
+  completed
+}
+
+enum MediaType {
+  image
+  video
+}
+
 model User {
   id String @id @default(cuid())
   
@@ -40,6 +50,8 @@ model User {
   
   // 'following' = people THIS user is following
   following Follow[] @relation("UserFollowing")
+
+  posts Post[]
 
   postCount Int @default(0)
   followerCount Int @default(0)
@@ -66,4 +78,45 @@ model Follow {
   @@id([followerId, followingId])
 
   @@index([followingId])
+}
+
+model Post {
+  id           String     @id @default(cuid())
+
+  content      String?    @db.Text 
+  
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status       PostStatus @default(processing)
+  hidden       Boolean @default(false)
+
+
+  media        PostMedia[]
+  
+  likeCount    Int        @default(0)
+  commentCount Int        @default(0)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([userId, status, hidden, createdAt(sort: Desc)])
+}
+
+model PostMedia {
+  id        String    @id @default(cuid())
+
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  type      MediaType
+  order     Int       
+
+  url   String    
+  blurhash  String?
+
+  width     Int?
+  height    Int?
+
+  @@index([postId])
 }

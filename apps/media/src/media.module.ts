@@ -8,6 +8,7 @@ import { Authorize } from '@app/utils'
 import { StorageService } from './storage.service'
 import { BullModule } from '@nestjs/bullmq'
 import { AvatarProcessor } from './processors/avatar.processor'
+import { PostProcessor } from './processors/post.processor'
 
 @Module({
   imports: [
@@ -23,9 +24,15 @@ import { AvatarProcessor } from './processors/avatar.processor'
       }),
       inject: [ConfigService],
     }),
-    BullModule.registerQueue({ name: 'avatar' }),
+    BullModule.registerQueue({ name: 'avatar' }, { name: 'post' }),
   ],
   controllers: [MediaController],
-  providers: [MediaService, { provide: APP_GUARD, useClass: Authorize }, StorageService, AvatarProcessor],
+  providers: [
+    MediaService,
+    { provide: APP_GUARD, useClass: Authorize },
+    StorageService,
+    AvatarProcessor,
+    PostProcessor,
+  ],
 })
 export class MediaModule {}
