@@ -40,6 +40,21 @@ services:
     ports:
       - '3002:3000'
 
+  posts:
+    build:
+      context: .
+      dockerfile: apps/posts/Dockerfile
+    container_name: lumina-posts
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - '3003:3000'
+
   nginx:
     image: nginx:alpine
     container_name: lumina-gateway
@@ -51,6 +66,7 @@ services:
     depends_on:
       - auth
       - media
+      - posts
 
 volumes:
   redis_data:
