@@ -52,6 +52,8 @@ model User {
   following Follow[] @relation("UserFollowing")
 
   posts Post[]
+  likes Like[]
+  saved SavedPost[]
 
   postCount Int @default(0)
   followerCount Int @default(0)
@@ -97,6 +99,9 @@ model Post {
   likeCount    Int        @default(0)
   commentCount Int        @default(0)
 
+  likes Like[]
+  saved SavedPost[]
+
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -119,4 +124,34 @@ model PostMedia {
   height    Int?
 
   @@index([postId])
+}
+
+model Like {
+  userId String
+  postId String
+
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+
+  @@index([userId, createdAt(sort: Desc)]) 
+  @@index([postId, createdAt(sort: Desc)])
+}
+
+model SavedPost {
+  userId    String
+  postId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+
+  @@id([userId, postId])
+  
+  @@index([userId, createdAt(sort: Desc)]) 
 }

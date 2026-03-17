@@ -69,4 +69,60 @@ export class PostsService {
 
     return { posts, cursor }
   }
+
+  async toggleLike(postId: string, userId: string) {
+    const like = await this.db.like.findUnique({
+      where: { userId_postId: { userId, postId } },
+      select: { createdAt: true },
+    })
+
+    return like ? this.unlike(postId, userId) : this.like(postId, userId)
+  }
+
+  private async like(postId: string, userId: string) {
+    await this.db.$transaction([
+      this.db.like.delete({ where: { userId_postId: { userId, postId } } }),
+      this.db.post.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
+    ])
+
+    return false
+  }
+
+  private async unlike(postId: string, userId: string) {
+    try {
+      await this.db.$transaction([
+        this.db.like.create({ data: { userId, postId } }),
+        this.db.post.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } }),
+      ])
+
+      return true
+    } catch (error) {
+      if (error.code === 'P2002') return true
+      throw error
+    }
+  }
+
+  async toggleSaved(postId: string, userId: string) {
+    const saved = await this.db.savedPost.findUnique({
+      where: { userId_postId: { userId, postId } },
+      select: { createdAt: true },
+    })
+
+    return saved ? this.unsave(postId, userId) : this.save(postId, userId)
+  }
+
+  private async save(postId: string, userId: string) {
+    await this.db.savedPost.delete({ where: { userId_postId: { userId, postId } } })
+    return false
+  }
+
+  private async unsave(postId: string, userId: string) {
+    try {
+      await this.db.like.create({ data: { userId, postId } })
+      return true
+    } catch (error) {
+      if (error.code === 'P2002') return true
+      throw error
+    }
+  }
 }
