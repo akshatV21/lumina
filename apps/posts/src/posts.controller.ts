@@ -2,6 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common'
 import { PostsService } from './posts.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
 import { JournalQueryDto } from './dtos/journal.dto'
+import { CursorPaginationDto } from '@app/utils/pagination.dto'
 
 @Controller('posts')
 export class PostsController {
@@ -12,5 +13,12 @@ export class PostsController {
   async httpGetJournal(@Query() query: JournalQueryDto, @AuthUser() user: User): HttpResponse {
     const journal = await this.postsService.journal(query, user)
     return { success: true, message: 'Journal fetched successfully.', data: { journal } }
+  }
+
+  @Get('feed')
+  @Auth()
+  async httpGetFeed(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
+    const feed = await this.postsService.feed(query, user)
+    return { success: true, message: 'Feed fetched successfully.', data: { feed } }
   }
 }
