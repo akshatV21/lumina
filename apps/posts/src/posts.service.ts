@@ -22,17 +22,22 @@ export class PostsService {
           orderBy: { order: 'asc' },
           select: { id: true, url: true, type: true, width: true, height: true, blurhash: true },
         },
+        likes: { where: { userId: user.id }, select: { userId: true } },
+        saved: { where: { userId: user.id }, select: { userId: true } },
       },
     })
 
-    let nextCursor: string | null = null
+    let cursor: string | null = null
 
     if (posts.length > limit) {
       const next = posts.pop()!
-      nextCursor = next.id
+      cursor = next.id
     }
 
-    return { posts, cursor: nextCursor }
+    return {
+      posts: posts.map(p => ({ ...p, liked: p.likes.length > 0, saved: p.saved.length > 0 })),
+      cursor,
+    }
   }
 
   async feed(pagination: CursorPaginationDto, user: User) {
@@ -56,6 +61,8 @@ export class PostsService {
           orderBy: { order: 'asc' },
           select: { id: true, url: true, type: true, width: true, height: true, blurhash: true },
         },
+        likes: { where: { userId: user.id }, select: { userId: true } },
+        saved: { where: { userId: user.id }, select: { userId: true } },
       },
       take: limit + 1,
     })
@@ -67,7 +74,10 @@ export class PostsService {
       cursor = next.id
     }
 
-    return { posts, cursor }
+    return {
+      posts: posts.map(p => ({ ...p, liked: p.likes.length > 0, saved: p.saved.length > 0 })),
+      cursor,
+    }
   }
 
   async toggleLike(postId: string, userId: string) {
@@ -79,7 +89,7 @@ export class PostsService {
     return like ? this.unlike(postId, userId) : this.like(postId, userId)
   }
 
-  private async like(postId: string, userId: string) {
+  private async unlike(postId: string, userId: string) {
     await this.db.$transaction([
       this.db.like.delete({ where: { userId_postId: { userId, postId } } }),
       this.db.post.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
@@ -88,7 +98,7 @@ export class PostsService {
     return false
   }
 
-  private async unlike(postId: string, userId: string) {
+  private async like(postId: string, userId: string) {
     try {
       await this.db.$transaction([
         this.db.like.create({ data: { userId, postId } }),
@@ -111,14 +121,14 @@ export class PostsService {
     return saved ? this.unsave(postId, userId) : this.save(postId, userId)
   }
 
-  private async save(postId: string, userId: string) {
+  private async unsave(postId: string, userId: string) {
     await this.db.savedPost.delete({ where: { userId_postId: { userId, postId } } })
     return false
   }
 
-  private async unsave(postId: string, userId: string) {
+  private async save(postId: string, userId: string) {
     try {
-      await this.db.like.create({ data: { userId, postId } })
+      await this.db.savedPost.create({ data: { userId, postId } })
       return true
     } catch (error) {
       if (error.code === 'P2002') return true
