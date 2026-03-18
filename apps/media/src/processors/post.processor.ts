@@ -1,5 +1,6 @@
 import { DatabaseService } from '@app/database'
 import { Processor, WorkerHost } from '@nestjs/bullmq'
+import { Logger } from '@nestjs/common' // Added Logger
 import * as sharp from 'sharp'
 import { Job } from 'bullmq'
 import { StorageService } from '../storage.service'
@@ -8,12 +9,14 @@ import { createHash } from 'crypto'
 import { encode } from 'blurhash'
 import { join } from 'path'
 import { readFile, unlink, writeFile } from 'fs/promises'
-import Ffmpeg from 'fluent-ffmpeg'
+import * as Ffmpeg from 'fluent-ffmpeg'
 
 type ProcessStage = 'INIT' | 'PROCESSING_MEDIA' | 'DATABASE_TRANSACTION' | 'COMPLETED'
 
 @Processor('post')
 export class PostProcessor extends WorkerHost {
+  private readonly logger = new Logger(PostProcessor.name)
+
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
@@ -23,24 +26,32 @@ export class PostProcessor extends WorkerHost {
 
   async process(job: Job<any, any, string>) {
     const { postId, userId } = job.data
+    this.logger.log(`Starting job ${job.id} for Post: ${postId} (User: ${userId})`)
 
     const post = await this.db.post.findUnique({
       where: { id: postId },
       include: { media: true },
     })
 
-    if (!post || post.status !== 'processing') return
+    if (!post || post.status !== 'processing') {
+      this.logger.warn(`Job ${job.id} skipped: Post ${postId} not found or not in 'processing' status`)
+      return
+    }
 
     let currentStage: ProcessStage = 'INIT'
     const uploadedPermanentPaths: string[] = []
 
     try {
       currentStage = 'PROCESSING_MEDIA'
+      this.logger.debug(`Processing ${post.media.length} media items for Post ${postId}`)
+
       const processedMedia = await Promise.all(
         post.media.map(mediaItem => this.processMediaItem(mediaItem, uploadedPermanentPaths)),
       )
 
       currentStage = 'DATABASE_TRANSACTION'
+      this.logger.debug(`Updating database records for Post ${postId}`)
+
       await this.db.$transaction([
         ...processedMedia.map(m =>
           this.db.postMedia.update({
@@ -53,14 +64,22 @@ export class PostProcessor extends WorkerHost {
       ])
 
       currentStage = 'COMPLETED'
+      this.logger.log(`Successfully processed Post ${postId}`)
     } catch (error) {
-      await this.db.post.delete({ where: { id: post.id } }).catch(() => null)
+      this.logger.error(`Failed at stage [${currentStage}] for Post ${postId}: ${error.message}`, error.stack)
+
+      await this.db.post
+        .delete({ where: { id: post.id } })
+        .catch(e => this.logger.error(`Failed to delete failed post ${postId}: ${e.message}`))
+
       if (uploadedPermanentPaths.length > 0) {
+        this.logger.warn(`Rolling back ${uploadedPermanentPaths.length} uploads for Post ${postId}`)
         await Promise.all(uploadedPermanentPaths.map(path => this.storage.delete(BUCKETS.POST, path).catch(() => null)))
       }
 
       throw error
     } finally {
+      this.logger.debug(`Cleaning up temporary media for Post ${postId}`)
       for (const mediaItem of post.media) {
         await this.storage.delete(BUCKETS.POST, mediaItem.url).catch(() => null)
       }
@@ -68,6 +87,7 @@ export class PostProcessor extends WorkerHost {
   }
 
   private async processMediaItem(mediaItem: any, ledger: string[]) {
+    this.logger.debug(`Downloading media item: ${mediaItem.id} (${mediaItem.type})`)
     const rawBuffer = await this.storage.download(BUCKETS.POST, mediaItem.url)
     const fileHash = createHash('sha256').update(rawBuffer).digest('hex').substring(0, 16)
 
@@ -79,6 +99,7 @@ export class PostProcessor extends WorkerHost {
   }
 
   private async processImage(buffer: Buffer, hash: string, id: string, ledger: string[]) {
+    this.logger.debug(`Generating image derivatives for media: ${id}`)
     const image = sharp(buffer).rotate()
     const metadata = await image.metadata()
 
@@ -113,6 +134,7 @@ export class PostProcessor extends WorkerHost {
   }
 
   private async processVideo(buffer: Buffer, hash: string, id: string, ledger: string[]) {
+    this.logger.debug(`Processing video and extracting frames for media: ${id}`)
     const tempVideoPath = join('/tmp', `${hash}.mp4`)
     const tempFramePath = join('/tmp', `${hash}.jpg`)
 
@@ -128,7 +150,10 @@ export class PostProcessor extends WorkerHost {
             size: '?x1080',
           })
           .on('end', resolve)
-          .on('error', reject)
+          .on('error', err => {
+            this.logger.error(`FFmpeg Error on media ${id}: ${err.message}`)
+            reject(err)
+          })
       })
 
       const frameBuffer = await readFile(tempFramePath)
@@ -157,6 +182,8 @@ export class PostProcessor extends WorkerHost {
       ledger.push(videoPath, thumbPath)
 
       return { id, width: metadata.width, height: metadata.height, blurhash, urlBase: `processed/${hash}` }
+    } catch (error) {
+      throw error
     } finally {
       await unlink(tempVideoPath).catch(() => null)
       await unlink(tempFramePath).catch(() => null)
