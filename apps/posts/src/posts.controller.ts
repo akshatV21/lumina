@@ -24,6 +24,13 @@ export class PostsController {
     return { success: true, message: 'Feed fetched successfully.', data: { feed } }
   }
 
+  @Get('saved')
+  @Auth()
+  async httpGetSaved(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
+    const saved = await this.postsService.saved(query, user)
+    return { success: true, message: 'Saved posts fetched successfully.', data: { saved } }
+  }
+
   @Get('like')
   @Auth()
   async httpLikePost(@Query() query: LikeQueryDto, @AuthUser() user: User): HttpResponse {

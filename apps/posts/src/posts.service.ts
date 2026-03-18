@@ -80,6 +80,42 @@ export class PostsService {
     }
   }
 
+  async saved(pagination: CursorPaginationDto, user: User) {
+    const limit = pagination.limit ?? 20
+
+    const saved = await this.db.savedPost.findMany({
+      where: { userId: user.id },
+      cursor: pagination.cursor ? { userId_postId: { userId: user.id, postId: pagination.cursor } } : undefined,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        post: {
+          include: {
+            user: { select: { id: true, username: true, avatar: true } },
+            media: {
+              orderBy: { order: 'asc' },
+              select: { id: true, url: true, type: true, width: true, height: true, blurhash: true },
+            },
+            likes: { where: { userId: user.id }, select: { userId: true } },
+            saved: { where: { userId: user.id }, select: { userId: true } },
+          },
+        },
+      },
+      take: limit + 1,
+    })
+
+    let cursor: string | null = null
+
+    if (saved.length > limit) {
+      const next = saved.pop()!
+      cursor = next.post.id
+    }
+
+    return {
+      posts: saved.map(s => ({ ...s.post, liked: s.post.likes.length > 0, saved: s.post.saved.length > 0 })),
+      cursor,
+    }
+  }
+
   async toggleLike(postId: string, userId: string) {
     const like = await this.db.like.findUnique({
       where: { userId_postId: { userId, postId } },
