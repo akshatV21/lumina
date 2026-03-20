@@ -55,6 +55,15 @@
         "tsConfigPath": "apps/posts/tsconfig.app.json"
       }
     },
+    "rt-gateway": {
+      "type": "application",
+      "root": "apps/rt-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/rt-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/rt-gateway/tsconfig.app.json"
+      }
+    },
     "utils": {
       "type": "library",
       "root": "libs/utils",

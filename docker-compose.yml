@@ -55,6 +55,21 @@ services:
     ports:
       - '3003:3000'
 
+  gateway:
+    build:
+      context: .
+      dockerfile: apps/rt-gateway/Dockerfile
+    container_name: lumina-rt-gateway
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - '3004:3000'
+
   nginx:
     image: nginx:alpine
     container_name: lumina-gateway
@@ -67,6 +82,7 @@ services:
       - auth
       - media
       - posts
+      - gateway
 
 volumes:
   redis_data:
