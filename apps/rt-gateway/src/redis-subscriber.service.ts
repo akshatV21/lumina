@@ -17,7 +17,7 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     this.subscriberClient = new Redis(this.config.getOrThrow('REDIS_URL'))
 
-    this.subscriberClient.subscribe(REALTIME_CHANNEL, (err, count) => {
+    this.subscriberClient.subscribe(REALTIME_CHANNEL, (err, _count) => {
       if (err) {
         this.logger.error(`Failed to subscribe to ${REALTIME_CHANNEL}: ${err.message}`)
         return
