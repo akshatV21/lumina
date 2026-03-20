@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common'
 import { CommentsService } from './comments.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
 import { CreateCommentDto } from './dtos/comment.dto'
@@ -28,5 +28,12 @@ export class CommentsController {
   async httpListReplies(@Query() query: FetchRepliesDto, @AuthUser() user: User): HttpResponse {
     const res = await this.commentsService.replies(query, user)
     return { success: true, message: 'Fetched replies successfully.', data: res }
+  }
+
+  @Delete(':id')
+  @Auth()
+  async httpDeleteComment(@Param('id') commentId: string, @AuthUser() user: User): HttpResponse {
+    await this.commentsService.delete(commentId, user)
+    return { success: true, message: 'Comment deleted successfully.' }
   }
 }

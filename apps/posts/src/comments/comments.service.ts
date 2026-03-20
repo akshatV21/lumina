@@ -2,7 +2,7 @@ import { DatabaseService } from '@app/database'
 import { Injectable } from '@nestjs/common'
 import { CreateCommentDto } from './dtos/comment.dto'
 import { User } from '@app/utils'
-import { NoParentError } from './errors'
+import { NoCommentError, NoParentError } from './errors'
 import { FetchCommentsDto } from './dtos/fetch-comments.dto'
 import { FetchRepliesDto } from './dtos/fetch-replies.dto'
 
@@ -98,6 +98,23 @@ export class CommentsService {
     }
 
     return { replies, cursor }
+  }
+
+  async delete(commentId: string, user: User) {
+    const comment = await this.db.comment.findUnique({
+      where: { id: commentId, userId: user.id },
+      select: { postId: true, parentId: true, _count: { select: { replies: true } } },
+    })
+
+    if (!comment) throw new NoCommentError()
+
+    await this.db.$transaction([
+      this.db.comment.delete({ where: { id: commentId } }),
+      this.db.post.update({
+        where: { id: comment.postId },
+        data: { commentCount: { decrement: 1 + comment._count.replies } },
+      }),
+    ])
   }
 
   private extractMentions(content: string): string[] {

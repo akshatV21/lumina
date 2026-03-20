@@ -9,3 +9,13 @@ export class NoParentError extends BadRequestException {
     })
   }
 }
+
+export class NoCommentError extends BadRequestException {
+  constructor() {
+    super({
+      success: false,
+      error: 'NoCommentFound',
+      message: 'No comment was found.',
+    })
+  }
+}
