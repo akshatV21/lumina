@@ -54,6 +54,8 @@ model User {
   posts Post[]
   likes Like[]
   saved SavedPost[]
+  comments Comment[]
+  mentions Comment[] @relation("CommentMentions")
 
   postCount Int @default(0)
   followerCount Int @default(0)
@@ -101,6 +103,7 @@ model Post {
 
   likes Like[]
   saved SavedPost[]
+  comments Comment[]
 
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
@@ -154,4 +157,28 @@ model SavedPost {
   @@id([userId, postId])
   
   @@index([userId, createdAt(sort: Desc)]) 
+}
+
+model Comment {
+  id String @id @default(cuid())
+
+  postId String
+  userId String
+
+  content String
+
+  parentId String?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+
+  mentions User[] @relation("CommentMentions")
+
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt(sort: Asc)])
+  @@index([parentId, createdAt(sort: Asc)])
 }
