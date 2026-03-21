@@ -55,6 +55,21 @@ services:
     ports:
       - '3003:3000'
 
+  notifications:
+    build:
+      context: .
+      dockerfile: apps/notifications/Dockerfile
+    container_name: lumina-notifications
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - '3004:3000'
+
   gateway:
     build:
       context: .
@@ -68,7 +83,7 @@ services:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
     ports:
-      - '3004:3000'
+      - '3005:3000'
 
   nginx:
     image: nginx:alpine
@@ -82,6 +97,7 @@ services:
       - auth
       - media
       - posts
+      - notifications
       - gateway
 
 volumes:

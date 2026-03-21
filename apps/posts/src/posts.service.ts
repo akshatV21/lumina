@@ -3,10 +3,14 @@ import { User } from '@app/utils'
 import { Injectable } from '@nestjs/common'
 import { JournalQueryDto } from './dtos/journal.dto'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
+import { NotificationProducer } from './notification-producer.service'
 
 @Injectable()
 export class PostsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly producer: NotificationProducer,
+  ) {}
 
   async journal(query: JournalQueryDto, user: User) {
     const limit = query.limit ?? 10
@@ -130,18 +134,16 @@ export class PostsService {
       this.db.like.delete({ where: { userId_postId: { userId, postId } } }),
       this.db.post.update({ where: { id: postId }, data: { likeCount: { decrement: 1 } } }),
     ])
-
-    return false
   }
 
   private async like(postId: string, userId: string) {
     try {
-      await this.db.$transaction([
+      const [_, post] = await this.db.$transaction([
         this.db.like.create({ data: { userId, postId } }),
         this.db.post.update({ where: { id: postId }, data: { likeCount: { increment: 1 } } }),
       ])
 
-      return true
+      this.producer.like({ entityId: postId, actorId: userId, userId: post.userId })
     } catch (error) {
       if (error.code === 'P2002') return true
       throw error

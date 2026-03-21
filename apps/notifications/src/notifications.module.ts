@@ -1,9 +1,10 @@
-import { DatabaseService } from '@app/database'
+import { DatabaseModule } from '@app/database'
 import { NOTIFICATIONS_QUEUE } from '@app/utils'
 import { RedisModule } from '@nestjs-modules/ioredis'
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import { NotificationProcessor } from './notifications.processor'
 
 @Module({
   imports: [
@@ -16,10 +17,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
       useFactory: (config: ConfigService) => ({ type: 'single', url: config.getOrThrow('REDIS_URL') }),
       inject: [ConfigService],
     }),
-    DatabaseService,
+    DatabaseModule,
     BullModule.registerQueue({ name: NOTIFICATIONS_QUEUE }),
   ],
   controllers: [],
-  providers: [],
+  providers: [NotificationProcessor],
 })
 export class NotificationsModule {}

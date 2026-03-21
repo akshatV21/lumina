@@ -33,9 +33,18 @@ enum MediaType {
   video
 }
 
+enum NotificationType {
+  like
+  comment
+  reply
+  mention
+  followed
+  accepted
+}
+
 model User {
   id String @id @default(cuid())
-  
+
   username String @unique
   password String
 
@@ -47,84 +56,82 @@ model User {
 
   // 'followers' = people who follow THIS user
   followers Follow[] @relation("UserFollowers")
-  
+
   // 'following' = people THIS user is following
   following Follow[] @relation("UserFollowing")
 
-  posts Post[]
-  likes Like[]
-  saved SavedPost[]
+  posts    Post[]
+  likes    Like[]
+  saved    SavedPost[]
   comments Comment[]
-  mentions Comment[] @relation("CommentMentions")
+  mentions Comment[]   @relation("CommentMentions")
 
-  postCount Int @default(0)
-  followerCount Int @default(0)
+  postCount      Int @default(0)
+  followerCount  Int @default(0)
   followingCount Int @default(0)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model Follow {
-  followerId String
+  followerId  String
   followingId String
 
   // The user who clicked the "Follow" button
-  follower    User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
-  
-  // The user who is receiving the follow
-  following   User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  follower User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
 
-  status      FollowStatus @default(accepted)
-  
-  createdAt   DateTime     @default(now())
+  // The user who is receiving the follow
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  status FollowStatus @default(accepted)
+
+  createdAt DateTime @default(now())
 
   @@id([followerId, followingId])
-
   @@index([followingId])
 }
 
 model Post {
-  id           String     @id @default(cuid())
+  id String @id @default(cuid())
 
-  content      String?    @db.Text 
-  
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  status       PostStatus @default(processing)
-  hidden       Boolean @default(false)
+  content String? @db.Text
 
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  media        PostMedia[]
-  
-  likeCount    Int        @default(0)
-  commentCount Int        @default(0)
+  status PostStatus @default(processing)
+  hidden Boolean    @default(false)
 
-  likes Like[]
-  saved SavedPost[]
+  media PostMedia[]
+
+  likeCount    Int @default(0)
+  commentCount Int @default(0)
+
+  likes    Like[]
+  saved    SavedPost[]
   comments Comment[]
 
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, status, hidden, createdAt(sort: Desc)])
 }
 
 model PostMedia {
-  id        String    @id @default(cuid())
+  id String @id @default(cuid())
 
-  postId    String
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
-  type      MediaType
-  order     Int       
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  url   String    
-  blurhash  String?
+  type  MediaType
+  order Int
 
-  width     Int?
-  height    Int?
+  url      String
+  blurhash String?
+
+  width  Int?
+  height Int?
 
   @@index([postId])
 }
@@ -133,30 +140,27 @@ model Like {
   userId String
   postId String
 
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   @@id([userId, postId])
-
-  @@index([userId, createdAt(sort: Desc)]) 
+  @@index([userId, createdAt(sort: Desc)])
   @@index([postId, createdAt(sort: Desc)])
 }
 
 model SavedPost {
-  userId    String
-  postId    String
+  userId String
+  postId String
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
-
   @@id([userId, postId])
-  
-  @@index([userId, createdAt(sort: Desc)]) 
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model Comment {
@@ -169,11 +173,11 @@ model Comment {
 
   parentId String?
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies   Comment[] @relation("CommentReplies")
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
 
   mentions User[] @relation("CommentMentions")
 
@@ -181,4 +185,27 @@ model Comment {
 
   @@index([postId, createdAt(sort: Asc)])
   @@index([parentId, createdAt(sort: Asc)])
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+
+  type NotificationType
+
+  entityId String
+
+  actors      Json
+  actorsCount Int  @default(1)
+
+  metadata Json?
+
+  read Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, type, entityId])
+  @@index([userId, updatedAt(sort: Desc)])
 }
