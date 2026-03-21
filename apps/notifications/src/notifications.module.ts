@@ -1,10 +1,13 @@
 import { DatabaseModule } from '@app/database'
-import { NOTIFICATIONS_QUEUE } from '@app/utils'
+import { Authorize, NOTIFICATIONS_QUEUE } from '@app/utils'
 import { RedisModule } from '@nestjs-modules/ioredis'
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { NotificationProcessor } from './notifications.processor'
+import { NotificationsController } from './notifications.controller'
+import { NotificationsService } from './notifications.service'
+import { APP_GUARD } from '@nestjs/core'
 
 @Module({
   imports: [
@@ -20,7 +23,7 @@ import { NotificationProcessor } from './notifications.processor'
     DatabaseModule,
     BullModule.registerQueue({ name: NOTIFICATIONS_QUEUE }),
   ],
-  controllers: [],
-  providers: [NotificationProcessor],
+  controllers: [NotificationsController],
+  providers: [NotificationsService, { provide: APP_GUARD, useClass: Authorize }, NotificationProcessor],
 })
 export class NotificationsModule {}
