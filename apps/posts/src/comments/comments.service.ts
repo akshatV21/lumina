@@ -5,10 +5,11 @@ import { User } from '@app/utils'
 import { NoCommentError, NoParentError } from './errors'
 import { FetchCommentsDto } from './dtos/fetch-comments.dto'
 import { FetchRepliesDto } from './dtos/fetch-replies.dto'
+import { NotificationProducer } from '../notification-producer.service'
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService, private readonly producer: NotificationProducer) {}
 
   async create(data: CreateCommentDto, user: User) {
     const usernames = this.extractMentions(data.content)
@@ -39,6 +40,7 @@ export class CommentsService {
 
     // Fire events in future
 
+    this.
     return comment
   }
 

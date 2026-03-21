@@ -31,4 +31,23 @@ export class NotificationProducer {
       )
     }
   }
+
+  async comment(data: NotificationData) {
+    const key = `notification:comment:${data.entityId}:`
+    const isNew = await this.redis.sadd(key, data.actorId)
+    const size = await this.redis.scard(key)
+
+    if (size === 1 && isNew) {
+      await this.queue.add(
+        'notification-comment',
+        {
+          type: NotificationType.like,
+          entityId: data.entityId,
+          userId: data.userId,
+          key,
+        },
+        { delay: 10000 },
+      )
+    }
+  }
 }

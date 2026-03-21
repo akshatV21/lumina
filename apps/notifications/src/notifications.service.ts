@@ -29,4 +29,11 @@ export class NotificationsService {
 
     return res
   }
+
+  async read(user: User) {
+    await this.db.notification.updateMany({
+      where: { userId: user.id, read: false },
+      data: { read: true },
+    })
+  }
 }

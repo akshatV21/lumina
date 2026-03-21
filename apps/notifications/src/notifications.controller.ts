@@ -13,4 +13,11 @@ export class NotificationsController {
     const res = await this.notficationsService.list(query, user)
     return { success: true, message: 'Fetched notfications successfully.', data: res }
   }
+
+  @Get('read')
+  @Auth()
+  async httpMarkRead(@AuthUser() user: User): HttpResponse {
+    await this.notficationsService.read(user)
+    return { success: true, message: 'Successfully marked notifications as read.' }
+  }
 }
