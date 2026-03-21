@@ -45,7 +45,7 @@ export class NotificationProcessor extends WorkerHost {
         total = existing.actorsCount + ids.length - (existingActors.length - filtered.length)
 
         metadata = existing.metadata
-      } else if (type === 'like') {
+      } else if (type === 'like' || type === 'comment') {
         const post = await this.db.post.findUnique({
           where: { id: entityId },
           select: { media: { where: { order: 0 }, select: { url: true } } },

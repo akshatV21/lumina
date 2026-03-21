@@ -9,7 +9,10 @@ import { NotificationProducer } from '../notification-producer.service'
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly db: DatabaseService, private readonly producer: NotificationProducer) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly producer: NotificationProducer,
+  ) {}
 
   async create(data: CreateCommentDto, user: User) {
     const usernames = this.extractMentions(data.content)
@@ -24,7 +27,7 @@ export class CommentsService {
       if (!parent) throw new NoParentError()
     }
 
-    const [comment, _] = await this.db.$transaction([
+    const [comment, post] = await this.db.$transaction([
       this.db.comment.create({
         data: {
           postId: data.postId,
@@ -35,12 +38,14 @@ export class CommentsService {
         },
         include: { user: { select: { id: true, username: true, avatar: true } } },
       }),
-      this.db.post.update({ where: { id: data.postId }, data: { commentCount: { increment: 1 } } }),
+      this.db.post.update({
+        where: { id: data.postId },
+        data: { commentCount: { increment: 1 } },
+        select: { userId: true },
+      }),
     ])
 
-    // Fire events in future
-
-    this.
+    this.producer.comment({ entityId: comment.postId, actorId: user.id, userId: post.userId })
     return comment
   }
 

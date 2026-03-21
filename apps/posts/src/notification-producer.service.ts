@@ -41,7 +41,7 @@ export class NotificationProducer {
       await this.queue.add(
         'notification-comment',
         {
-          type: NotificationType.like,
+          type: NotificationType.comment,
           entityId: data.entityId,
           userId: data.userId,
           key,
