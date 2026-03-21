@@ -13,10 +13,14 @@ import {
 import { FollowDto } from './dtos/follow.dto'
 import { Prisma } from 'generated/prisma/client'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
+import { NotificationProducer } from '../notification-producer.service'
 
 @Injectable()
 export class UserService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly producer: NotificationProducer,
+  ) {}
 
   async profile(targetUsername: string | null, user: User) {
     const where: any = {}
@@ -120,6 +124,9 @@ export class UserService {
       if (error.code === 'P2002') throw new AlreadyRequestedError()
       throw error
     })
+
+    if (isPrivate) return
+    this.producer.followed({ entityId: user.id, userId: target.id, actorId: user.id })
   }
 
   async requests(pagination: CursorPaginationDto, user: User) {
