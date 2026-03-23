@@ -39,6 +39,7 @@ enum NotificationType {
   reply
   mention
   followed
+  requested
   accepted
 }
 

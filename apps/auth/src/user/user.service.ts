@@ -125,8 +125,8 @@ export class UserService {
       throw error
     })
 
-    if (isPrivate) return
-    this.producer.followed({ entityId: user.id, userId: target.id, actorId: user.id })
+    if (isPrivate) this.producer.requested({ entityId: user.id, userId: target.id, actorId: user.id })
+    else this.producer.followed({ entityId: user.id, userId: target.id, actorId: user.id })
   }
 
   async requests(pagination: CursorPaginationDto, user: User) {
