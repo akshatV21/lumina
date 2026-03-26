@@ -1,125 +1,100 @@
-# Technical Architecture Whitepaper: Lumina Backend
-**Author:** Gemini CLI  
-**Date:** March 24, 2026  
-**Audience:** Senior Engineering Managers, Staff Engineers, Technical Recruiters
+# Lumina Backend: Architectural Whitepaper
 
----
+## 1. Executive Summary
+Lumina Backend is a high-performance, event-driven social media infrastructure designed with a **NestJS Monorepo** microservices architecture. It addresses common scalability challenges in social platforms—such as heavy media processing, real-time notification fatigue, and social graph management—by decoupling concerns into specialized, independently scalable services.
 
-## 1. Executive Summary: From Monolith to Distributed Excellence
-Lumina is a high-performance, event-driven microservices ecosystem built to solve the "Social Media Asset Problem"—balancing rapid user interaction with intensive media processing. Unlike traditional CRUD applications, Lumina treats media ingestion and real-time notifications as first-class, asynchronous citizens. 
+## 2. System Architecture & Flow
 
-**Key Performance Metrics Targeted:**
-*   **API Latency:** <100ms for core social actions.
-*   **Media Processing:** Parallelized transcoding of multi-part posts.
-*   **Real-time Delivery:** Sub-50ms event propagation via unified gateway.
-
----
-
-## 2. System Blueprint
-The architecture follows a decoupled, stateless model where [NestJS](https://nestjs.com/) services communicate over a [Redis](https://redis.io/) backbone.
+The system utilizes a distributed architecture with a centralized **Nginx API Gateway**, a **PostgreSQL** persistence layer via **Prisma ORM**, and a **Redis** backbone for both task queuing (**BullMQ**) and real-time event distribution (**Pub/Sub**).
 
 ```mermaid
 graph TD
-    Client[Mobile/Web Client] <--> Nginx{NGINX API Gateway}
-    Nginx --> Auth[Auth/User Service]
-    Nginx --> Media[Media Service]
-    Nginx --> Posts[Posts Service]
-    Nginx --> RTG[RT-Gateway Service]
-    
-    Media -- Enqueue Job --> BullMQ[(BullMQ / Redis)]
-    BullMQ -- Process --> Worker[Media Worker]
-    Worker -- Storage --> Supabase[(Supabase S3/DB)]
-    
-    Posts -- Event --> PubSub[Redis Pub/Sub]
-    PubSub -- Notify --> RTG
-    RTG -- WebSocket --> Client
+    Client[Mobile/Web Client] -->|HTTP/REST| Nginx[Nginx API Gateway]
+    Client -->|WebSockets| RTGateway[RT-Gateway Service]
+
+    subgraph "Internal Microservices"
+        Nginx --> Auth[Auth Service]
+        Nginx --> Media[Media Service]
+        Nginx --> Posts[Posts Service]
+        Nginx --> Notifs[Notifications Service]
+
+        Auth --> DB[(PostgreSQL)]
+        Posts --> DB
+        Notifs --> DB
+
+        Media -->|BullMQ| MediaWorker[Media Processor]
+        MediaWorker --> DB
+        MediaWorker --> Storage[S3 Object Storage]
+    end
+
+    subgraph "Real-time & Async Backbone"
+        MediaWorker -.->|Job Complete| Redis[(Redis)]
+        Notifs -.->|Publish Event| Redis
+        Redis -.->|Subscribe| RTGateway
+    end
 ```
 
 ---
 
-## 3. The Real-Time Gateway Pattern (WebSocket Optimization)
-To prevent "Connection Bloat" (where every service maintains its own WebSocket server), Lumina uses a **Unified Real-Time Gateway**. This service acts as a stateless relay, routing internal system events to connected clients based on `userId` affinity.
+## 3. Service Deep-Dives
 
-### Implementation: Redis Pub/Sub Relay
-The gateway subscribes to a global `REALTIME_CHANNEL`. When any internal service (e.g., `Notifications`) publishes a message, the gateway resolves the active socket and emits the event.
+### 3.1 Auth & Social Graph (`apps/auth`)
+The Auth service manages user identity and the complex relationships between them.
+*   **Secure Authentication:** Employs `bcrypt` for password hashing and `jsonwebtoken` (JWT) for stateless session management.
+*   **Private/Public Logic:** Implements a state-machine for following users. If an account is `private`, the follow status is set to `pending`. Acceptance requires an explicit transaction that updates counts for both users atomically.
+*   **Atomic Transactions:** Uses Prisma's `$transaction` to ensure that incrementing a `followerCount` and creating a `Follow` record are atomic, preventing data drift.
 
-```typescript
-// apps/rt-gateway/src/redis-subscriber.service.ts
-this.subscriberClient.on('message', (receivedChannel, message) => {
-  if (receivedChannel === REALTIME_CHANNEL) {
-    const { userId, event, data } = JSON.parse(message);
-    // Precise routing to user-specific socket room
-    this.gateway.server.to(`user_${userId}`).emit(event, data);
-  }
-});
-```
+### 3.2 Media Lifecycle Pipeline (`apps/media`)
+Media handling is the most resource-intensive part of the system. It follows a "Sign-Upload-Process" workflow to offload heavy lifting from the API.
 
----
+1.  **Direct-to-Cloud Upload:** Instead of proxying multi-megabyte files through the backend, the service generates **S3-signed URLs**, allowing clients to upload directly to storage.
+2.  **Asynchronous Orchestration:** Once uploaded, the client notifies the service, which queues a job in **BullMQ**.
+3.  **Advanced Processing (The "Pipeline"):**
+    *   **Images:** Uses `Sharp` for high-performance transformations. It generates multiple derivatives (e.g., `thumb`, `feed`) and converts them to the efficient `WebP` format.
+    *   **Videos:** Uses `FFmpeg` to extract high-resolution poster frames at specific timestamps (0.1s).
+    *   **UX Optimization:** Generates **BlurHash** strings for all media, enabling "instant-load" placeholder states on the client.
+4.  **Fault Tolerance:** Implements a "Database-First, Storage-Second" rollback strategy. If a processing job fails, the system purges temporary assets and reverts database states to maintain consistency.
 
-## 4. Asynchronous Event Pipeline: Media & Notifications
-Lumina offloads CPU-intensive tasks to [BullMQ](https://docs.bullmq.io/), ensuring the main thread never blocks on I/O or transcoding.
+### 3.3 Content Engine (`apps/posts`)
+Handles the lifecycle of posts, comments, and user interactions.
+*   **Feed Generation:** Utilizes **Cursor-based Pagination** (O(1) lookups) rather than offset-based (O(n)), ensuring consistent performance as the database grows.
+*   **Recursive Threading:** Supports multi-level nested comments via a self-referencing `parentId` relationship.
+*   **Mention Extraction:** Automatically parses `@username` patterns using regex and validates them against the database before creating relationships.
 
-### Media Transcoding Workflow
-The `Media Service` uses [Sharp](https://sharp.pixelplumbing.com/) and [FFmpeg](https://www.ffmpeg.org/) to generate multi-format derivatives.
+### 3.4 Intelligent Notifications (`apps/notifications`)
+To prevent notification fatigue, the system implements an **Actor-Aggregation** model.
 
-```typescript
-// apps/media/src/processors/post.processor.ts snippet
-private async processImage(buffer: Buffer, hash: string) {
-  const image = sharp(buffer).rotate();
-  
-  // Parallel processing of thumbnails and feed-optimized images
-  const [thumb, feed] = await Promise.all([
-    image.clone().resize(300, 300, { fit: 'cover' }).webp().toBuffer(),
-    image.clone().resize({ width: 1080 }).webp().toBuffer()
-  ]);
+*   **Aggregation Logic:** Instead of "A liked your post" and "B liked your post," the system aggregates these into "A and B and 5 others liked your post."
+*   **Redis-Backed Staging:** Uses Redis sets to temporarily stage actors before flushing them into the database, reducing write-heavy contention.
+*   **Metadata Injection:** Injects visual context (e.g., a post thumbnail) into the notification record for a richer user experience.
 
-  // Upload to Supabase Storage
-  await this.storage.upload(thumb, BUCKETS.POST, `processed/${hash}-thumb.webp`);
-}
-```
-
-### Notification Aggregation Logic
-To avoid database write-amplification, Lumina uses Redis Sets (`SADD`) to aggregate actors (e.g., "User X and 5 others liked your post") before flushing to [PostgreSQL](https://www.postgresql.org/).
+### 3.5 Real-time Backbone (`apps/rt-gateway`)
+The RT-Gateway is a stateless **Socket.io** server that provides a persistent connection to clients.
+1.  **statelessness:** The gateway doesn't track which user is on which server instance; it uses **Redis Pub/Sub** to broadcast events.
+2.  **User Isolation:** Upon connection, every user is automatically joined to a private room `user_{userId}`.
+3.  **Event Routing:** When a service (like Notifications) wants to send a live update, it publishes a message to the `realtime_channel`. The gateway subscribers pick it up and route it to the specific user room.
 
 ---
 
-## 5. Data Strategy: The Supabase + Prisma Stack
-We utilize [Prisma](https://www.prisma.io/) as our ORM to maintain strict type safety across microservices. The schema is optimized for social graph queries with composite indexes.
+## 4. Technical Design Principles
 
-**Example: Highly Indexed Social Graph**
-```prisma
-model Follow {
-  followerId  String
-  followingId String
-  status      FollowStatus @default(accepted)
-  
-  @@id([followerId, followingId])
-  @@index([followingId]) // Optimized for "Who follows me?" queries
-}
-```
+### 4.1 Data Modeling Strategy
+The PostgreSQL schema (managed via Prisma) is optimized for high-read social scenarios:
+*   **Composite Indexes:** Uses `@@index([userId, status, hidden, createdAt(sort: Desc)])` for extremely fast feed fetching.
+*   **JSON Fields:** Stores actor lists and dynamic metadata as `Json` in the Notification model to balance flexibility with relational integrity.
 
-*   **Storage:** [Supabase Storage](https://supabase.com/storage) for S3-compatible asset management.
-*   **Database:** PostgreSQL with Row Level Security (RLS) readiness.
+### 4.2 Error Handling & Validation
+*   **Custom Validation Pipe:** Extends NestJS's `ValidationPipe` to provide a unified, machine-readable error format across all services.
+*   **Domain-Specific Errors:** Each service defines its own set of semantic errors (e.g., `FollowOwnError`, `PostUploadUrlError`) which are mapped to appropriate HTTP status codes at the gateway level.
 
 ---
 
-## 6. Scalability & Deployment Model
-Lumina is designed for horizontal scaling via [Docker](https://www.docker.com/) and NGINX.
-
-*   **Service Isolation:** Each microservice has its own `Dockerfile` and can be scaled independently during traffic spikes.
-*   **Infrastructure:**
-    *   **NGINX:** Handles SSL termination and path-based routing (`/api/auth`, `/api/media`, etc.).
-    *   **Redis:** Serves as both a Message Broker and a shared state cache.
+## 5. Deployment & Scalability
+The entire system is containerized with **Docker** and orchestrated via `docker-compose.yml`.
+*   **Horizontal Scaling:** Because services are decoupled, one can scale the `Media` worker pool during peak upload times without increasing memory for the `Auth` service.
+*   **Reverse Proxy:** **Nginx** handles TLS termination, request routing, and basic rate limiting, acting as the single entry point for the entire microservices mesh.
 
 ---
 
-## 7. Engineering Stack & Resources
-*   **Framework:** [NestJS](https://nestjs.com/)
-*   **Queueing:** [BullMQ](https://docs.bullmq.io/)
-*   **Image Processing:** [Sharp](https://sharp.pixelplumbing.com/)
-*   **Video Processing:** [Fluent-FFmpeg](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg)
-*   **Database:** [Supabase / PostgreSQL](https://supabase.com/)
-*   **ORM:** [Prisma](https://www.prisma.io/)
-
----
-**Technical Summary:** Lumina is not just a clone; it is a blueprint for scalable social architectures, prioritizing asynchronous processing and efficient real-time communication.
+## 6. Conclusion
+Lumina Backend is built for the modern web, prioritizing **asynchronous processing**, **real-time interactivity**, and **data integrity**. By combining the structured development of **NestJS** with the high-performance capabilities of **Redis**, **Sharp**, and **PostgreSQL**, it provides a foundation that is both technically sophisticated and horizontally scalable.
