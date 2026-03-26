@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common'
+import { Controller, Get, Param, Query } from '@nestjs/common'
 import { PostsService } from './posts.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
 import { JournalQueryDto } from './dtos/journal.dto'
@@ -29,6 +29,13 @@ export class PostsController {
   async httpGetSaved(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {
     const saved = await this.postsService.saved(query, user)
     return { success: true, message: 'Saved posts fetched successfully.', data: { saved } }
+  }
+
+  @Get(':id')
+  @Auth()
+  async httpGetPost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
+    const post = await this.postsService.post(id, user)
+    return { success: true, message: 'Post fetched successfully.', data: { post } }
   }
 
   @Get('like')

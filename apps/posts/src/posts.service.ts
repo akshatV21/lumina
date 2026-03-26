@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common'
 import { JournalQueryDto } from './dtos/journal.dto'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
 import { NotificationProducer } from './notification-producer.service'
+import { PrivateProfileError } from './errors'
 
 @Injectable()
 export class PostsService {
@@ -15,6 +16,21 @@ export class PostsService {
   async journal(query: JournalQueryDto, user: User) {
     const limit = query.limit ?? 10
     const same = query.targetId === user.id
+
+    if (!same) {
+      const target = await this.db.user.findUnique({
+        where: { id: query.targetId },
+        select: {
+          type: true,
+          followers: { where: { followerId: user.id }, select: { status: true } },
+        },
+      })
+
+      if (target?.type === 'private') {
+        const follow = target.followers[0]
+        if (!follow || follow.status !== 'accepted') throw new PrivateProfileError()
+      }
+    }
 
     const posts = await this.db.post.findMany({
       where: { userId: query.targetId, status: 'completed', hidden: same ? undefined : false },
@@ -41,6 +57,44 @@ export class PostsService {
     return {
       posts: posts.map(p => ({ ...p, liked: p.likes.length > 0, saved: p.saved.length > 0 })),
       cursor,
+    }
+  }
+
+  async post(id: string, user: User) {
+    const post = await this.db.post.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+            type: true,
+            followers: { where: { followerId: user.id }, select: { status: true } },
+          },
+        },
+        media: {
+          orderBy: { order: 'asc' },
+          select: { id: true, url: true, type: true, width: true, height: true, blurhash: true },
+        },
+        likes: { where: { userId: user.id }, select: { userId: true } },
+        saved: { where: { userId: user.id }, select: { userId: true } },
+      },
+    })
+
+    if (!post) return null
+
+    const same = post.userId === user.id
+
+    if (!same && post.user.type === 'private') {
+      const follow = post.user.followers[0]
+      if (!follow || follow.status !== 'accepted') throw new PrivateProfileError()
+    }
+
+    return {
+      ...post,
+      liked: post.likes.length > 0,
+      saved: post.saved.length > 0,
     }
   }
 
