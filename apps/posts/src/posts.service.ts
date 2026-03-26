@@ -213,6 +213,23 @@ export class PostsService {
     return saved ? this.unsave(postId, userId) : this.save(postId, userId)
   }
 
+  async delete(postId: string, user: User) {
+    const post = await this.db.post.findUnique({
+      where: { id: postId },
+      select: { userId: true },
+    })
+
+    if (!post || post.userId !== user.id) return
+
+    await this.db.$transaction([
+      this.db.post.delete({ where: { id: postId } }),
+      this.db.user.update({
+        where: { id: user.id },
+        data: { postCount: { decrement: 1 } },
+      }),
+    ])
+  }
+
   private async unsave(postId: string, userId: string) {
     await this.db.savedPost.delete({ where: { userId_postId: { userId, postId } } })
     return false

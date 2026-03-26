@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common'
+import { Controller, Delete, Get, Param, Query } from '@nestjs/common'
 import { PostsService } from './posts.service'
 import { Auth, AuthUser, HttpResponse, User } from '@app/utils'
 import { JournalQueryDto } from './dtos/journal.dto'
@@ -36,6 +36,13 @@ export class PostsController {
   async httpGetPost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
     const post = await this.postsService.post(id, user)
     return { success: true, message: 'Post fetched successfully.', data: { post } }
+  }
+
+  @Delete(':id')
+  @Auth()
+  async httpDeletePost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
+    await this.postsService.delete(id, user)
+    return { success: true, message: 'Post deleted successfully.' }
   }
 
   @Get('like')

@@ -12,6 +12,12 @@ import { RejectRequestDto } from './dtos/reject.dto'
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @Get('me')
+  @Auth()
+  async httpGetMe(@AuthUser() user: User): HttpResponse {
+    return { success: true, message: 'User details fetched successfully.', data: { user: { id: user.id } } }
+  }
+
   @Get('profile')
   @Auth()
   async httpGetProfile(@Query('username') username: string | null, @AuthUser() user: User): HttpResponse {
