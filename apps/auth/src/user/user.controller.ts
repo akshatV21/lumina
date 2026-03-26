@@ -40,6 +40,13 @@ export class UserController {
     return { success: true, message: 'Follow request successfull.' }
   }
 
+  @Post('unfollow')
+  @Auth()
+  async httpUnfollow(@Body() data: FollowDto, @AuthUser() user: User): HttpResponse {
+    await this.userService.unfollow(data, user)
+    return { success: true, message: 'Unfollowed successfully.' }
+  }
+
   @Get('requests')
   @Auth()
   async httpGetFollowRequests(@Query() query: CursorPaginationDto, @AuthUser() user: User): HttpResponse {

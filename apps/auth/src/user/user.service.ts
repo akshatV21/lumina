@@ -129,6 +129,29 @@ export class UserService {
     else this.producer.followed({ entityId: user.id, userId: target.id, actorId: user.id })
   }
 
+  async unfollow(data: FollowDto, user: User) {
+    const follow = await this.db.follow.findUnique({
+      where: { followerId_followingId: { followerId: user.id, followingId: data.targetId } },
+    })
+
+    if (!follow) return
+
+    const tasks: Prisma.PrismaPromise<any>[] = [
+      this.db.follow.delete({
+        where: { followerId_followingId: { followerId: user.id, followingId: data.targetId } },
+      }),
+    ]
+
+    if (follow.status === 'accepted') {
+      tasks.push(
+        this.db.user.update({ where: { id: user.id }, data: { followingCount: { decrement: 1 } } }),
+        this.db.user.update({ where: { id: data.targetId }, data: { followerCount: { decrement: 1 } } }),
+      )
+    }
+
+    await this.db.$transaction(tasks)
+  }
+
   async requests(pagination: CursorPaginationDto, user: User) {
     const limit = pagination.limit ?? 20
 
