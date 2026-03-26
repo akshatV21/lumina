@@ -11,7 +11,7 @@ import {
   UserNotFoundError,
 } from '../utils/error'
 import { FollowDto } from './dtos/follow.dto'
-import { Prisma } from 'generated/prisma/client'
+import { NotificationType, Prisma } from 'generated/prisma/client'
 import { CursorPaginationDto } from '@app/utils/pagination.dto'
 import { NotificationProducer } from '../notification-producer.service'
 
@@ -168,6 +168,11 @@ export class UserService {
       this.db.user.update({ where: { id: followerId }, data: { followingCount: { increment: 1 } } }),
       this.db.user.update({ where: { id: user.id }, data: { followerCount: { increment: 1 } } }),
     ])
+
+    await this.db.notification.update({
+      where: { userId_type_entityId: { userId: user.id, type: NotificationType.requested, entityId: followerId } },
+      data: { metadata: { action: 'accepted' } },
+    })
   }
 
   async reject(followerId: string, user: User) {
@@ -177,6 +182,11 @@ export class UserService {
         followingId: user.id,
         status: 'pending',
       },
+    })
+
+    await this.db.notification.update({
+      where: { userId_type_entityId: { userId: user.id, type: NotificationType.requested, entityId: followerId } },
+      data: { metadata: { action: 'rejected' } },
     })
   }
 

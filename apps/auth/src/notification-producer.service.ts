@@ -29,16 +29,16 @@ export class NotificationProducer {
   }
 
   async requested(data: NotificationData) {
-    // const key = `notification:request:${data.entityId}:`
-    // const isNew = await this.redis.sadd(key, data.actorId)
-    // const size = await this.redis.scard(key)
-    // if (size === 1 && isNew) {
-    //   await this.queue.add('notification-request', {
-    //     type: NotificationType.requested,
-    //     entityId: data.entityId,
-    //     userId: data.userId,
-    //     key,
-    //   })
-    // }
+    const key = `notification:request:${data.entityId}:`
+    const isNew = await this.redis.sadd(key, data.actorId)
+    const size = await this.redis.scard(key)
+    if (size === 1 && isNew) {
+      await this.queue.add('notification-request', {
+        type: NotificationType.requested,
+        entityId: data.entityId,
+        userId: data.userId,
+        key,
+      })
+    }
   }
 }

@@ -44,7 +44,7 @@ export class NotificationProcessor extends WorkerHost {
         combined = [...actors, ...filtered].slice(0, 2)
         total = existing.actorsCount + ids.length - (existingActors.length - filtered.length)
 
-        metadata = existing.metadata
+        if (type !== 'requested') metadata = existing.metadata
       } else if (type === 'like' || type === 'comment') {
         const post = await this.db.post.findUnique({
           where: { id: entityId },
@@ -58,7 +58,7 @@ export class NotificationProcessor extends WorkerHost {
 
       const notification = await this.db.notification.upsert({
         where: { userId_type_entityId: { userId, type, entityId } },
-        update: { actors: combined, actorsCount: total, read: false, updatedAt: new Date() },
+        update: { actors: combined, actorsCount: total, read: false, updatedAt: new Date(), metadata },
         create: { userId, type, entityId, actors: combined, actorsCount: total, metadata },
       })
 
