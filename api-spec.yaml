@@ -1,0 +1,1109 @@
+services:
+  - name: auth
+    basePath: /auth
+    endpoints:
+      - method: POST
+        path: /auth/register
+        summary: Register a new user
+        request:
+          body:
+            type: object
+            schema:
+              username:
+                type: string
+                required: true
+                example: 'johndoe'
+              password:
+                type: string
+                required: true
+                example: 'StrongPassword123!'
+              type:
+                type: string
+                required: true
+                enum: ['public', 'private']
+                example: 'public'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'User registered successfully.'
+        errors:
+          - status: 400
+            type: BadRequest
+            message: 'This username is already in use.'
+            schema:
+              success:
+                type: boolean
+              error:
+                type: string
+              message:
+                type: string
+        auth:
+          required: false
+
+      - method: POST
+        path: /auth/login
+        summary: Authenticate a user and return a token
+        request:
+          body:
+            type: object
+            schema:
+              username:
+                type: string
+                required: true
+                example: 'johndoe'
+              password:
+                type: string
+                required: true
+                example: 'StrongPassword123!'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'User logged in successfully.'
+              data:
+                type: object
+                schema:
+                  user:
+                    type: object
+                    schema:
+                      id:
+                        type: string
+                        example: 'clk1234567890'
+                      username:
+                        type: string
+                        example: 'johndoe'
+                  token:
+                    type: string
+                    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+        errors:
+          - status: 400
+            type: BadRequest
+            message: 'Invalid credentials provided.'
+        auth:
+          required: false
+
+  - name: user
+    basePath: /user
+    endpoints:
+      - method: GET
+        path: /user/me
+        summary: Get current authenticated user details
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'User details fetched successfully.'
+              data:
+                type: object
+                schema:
+                  user:
+                    type: object
+                    schema:
+                      id:
+                        type: string
+                        example: 'clk1234567890'
+        auth:
+          required: true
+
+      - method: GET
+        path: /user/profile
+        summary: Get user profile by username
+        request:
+          query:
+            - name: username
+              type: string
+              required: false
+              example: 'johndoe'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched profile successfully.'
+              data:
+                type: object
+                schema:
+                  profile:
+                    type: object
+                    schema:
+                      id:
+                        type: string
+                        example: 'clk123'
+                      username:
+                        type: string
+                        example: 'johndoe'
+                      bio:
+                        type: string
+                        example: 'Exploring the digital world.'
+                      avatar:
+                        type: string
+                        example: 'https://example.com/avatar.jpg'
+                      type:
+                        type: string
+                        enum: ['public', 'private']
+                        example: 'public'
+                      stats:
+                        type: object
+                        schema:
+                          followers:
+                            type: number
+                            example: 150
+                          following:
+                            type: number
+                            example: 120
+                          posts:
+                            type: number
+                            example: 45
+                      same:
+                        type: boolean
+                        example: false
+                      followState:
+                        type: string
+                        enum: ['none', 'pending', 'accepted']
+                        example: 'none'
+        auth:
+          required: true
+
+      - method: PATCH
+        path: /user/bio
+        summary: Update user bio
+        request:
+          body:
+            type: object
+            schema:
+              bio:
+                type: string
+                required: true
+                example: 'Living the dream!'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'User bio updated successfully.'
+        auth:
+          required: true
+
+      - method: PATCH
+        path: /user/type
+        summary: Update user account type
+        request:
+          body:
+            type: object
+            schema:
+              type:
+                type: string
+                required: true
+                enum: ['public', 'private']
+                example: 'private'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'User account type updated successfully.'
+        auth:
+          required: true
+
+      - method: POST
+        path: /user/follow
+        summary: Follow a user
+        request:
+          body:
+            type: object
+            schema:
+              targetId:
+                type: string
+                required: true
+                example: 'user_id_123'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Follow request successfull.'
+        auth:
+          required: true
+        events:
+          - name: notification-follow
+            payload:
+              type: followed
+              entityId: string
+              userId: string
+
+      - method: POST
+        path: /user/unfollow
+        summary: Unfollow a user
+        request:
+          body:
+            type: object
+            schema:
+              targetId:
+                type: string
+                required: true
+                example: 'user_id_123'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Unfollowed successfully.'
+        auth:
+          required: true
+
+      - method: GET
+        path: /user/requests
+        summary: Get pending follow requests
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+              example: 10
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched follow requests successfully.'
+              data:
+                type: object
+                schema:
+                  requests:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        username:
+                          type: string
+                        avatar:
+                          type: string
+                  cursor:
+                    type: string
+                    example: 'next_user_id'
+        auth:
+          required: true
+
+      - method: POST
+        path: /user/accept
+        summary: Accept a follow request
+        request:
+          body:
+            type: object
+            schema:
+              followerId:
+                type: string
+                required: true
+                example: 'follower_id_123'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Request accepted successfully.'
+        auth:
+          required: true
+
+      - method: POST
+        path: /user/reject
+        summary: Reject a follow request
+        request:
+          body:
+            type: object
+            schema:
+              followerId:
+                type: string
+                required: true
+                example: 'follower_id_123'
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Request rejected successfully.'
+        auth:
+          required: true
+
+      - method: GET
+        path: /user/followers
+        summary: Get list of followers
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+              example: 10
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched followers successfully.'
+              data:
+                type: object
+                schema:
+                  followers:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        username:
+                          type: string
+                        avatar:
+                          type: string
+                  cursor:
+                    type: string
+                    example: 'next_user_id'
+        auth:
+          required: true
+
+      - method: GET
+        path: /user/followings
+        summary: Get list of users being followed
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+              example: 10
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched followings successfully.'
+              data:
+                type: object
+                schema:
+                  followings:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        username:
+                          type: string
+                        avatar:
+                          type: string
+                  cursor:
+                    type: string
+                    example: 'next_user_id'
+        auth:
+          required: true
+
+  - name: posts
+    basePath: /posts
+    endpoints:
+      - method: GET
+        path: /posts/journal
+        summary: Get user's own posts or another user's posts
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+            - name: targetId
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Journal fetched successfully.'
+              data:
+                type: object
+                schema:
+                  posts:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        content:
+                          type: string
+                        createdAt:
+                          type: string
+                        media:
+                          type: array
+                          items:
+                            type: object
+                            schema:
+                              id:
+                                type: string
+                              url:
+                                type: string
+                              type:
+                                type: string
+                              width:
+                                type: number
+                              height:
+                                type: number
+                              blurhash:
+                                type: string
+                        liked:
+                          type: boolean
+                        saved:
+                          type: boolean
+                        likeCount:
+                          type: number
+                        commentCount:
+                          type: number
+                  cursor:
+                    type: string
+        auth:
+          required: true
+
+      - method: GET
+        path: /posts/feed
+        summary: Get personal feed of posts from followed users
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Feed fetched successfully.'
+              data:
+                type: object
+                schema:
+                  posts:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        content:
+                          type: string
+                        user:
+                          type: object
+                          schema:
+                            id:
+                              type: string
+                            username:
+                              type: string
+                            avatar:
+                              type: string
+                        media:
+                          type: array
+                          items:
+                            type: object
+                        liked:
+                          type: boolean
+                        saved:
+                          type: boolean
+                  cursor:
+                    type: string
+        auth:
+          required: true
+
+      - method: GET
+        path: /posts/saved
+        summary: Get list of saved posts
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Saved posts fetched successfully.'
+              data:
+                type: object
+                schema:
+                  posts:
+                    type: array
+                    items:
+                      type: object
+                  cursor:
+                    type: string
+        auth:
+          required: true
+
+      - method: GET
+        path: /posts/:id
+        summary: Get details of a single post
+        request:
+          params:
+            - name: id
+              type: string
+              required: true
+              example: 'post_id_123'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Post fetched successfully.'
+              data:
+                type: object
+                schema:
+                  post:
+                    type: object
+                    schema:
+                      id:
+                        type: string
+                      content:
+                        type: string
+                      user:
+                        type: object
+                      media:
+                        type: array
+                        items:
+                          type: object
+                      liked:
+                        type: boolean
+                      saved:
+                        type: boolean
+        auth:
+          required: true
+
+      - method: DELETE
+        path: /posts/:id
+        summary: Delete a post
+        request:
+          params:
+            - name: id
+              type: string
+              required: true
+              example: 'post_id_123'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Post deleted successfully.'
+        auth:
+          required: true
+
+      - method: GET
+        path: /posts/like
+        summary: Toggle like on a post
+        request:
+          query:
+            - name: postId
+              type: string
+              required: true
+              example: 'post_id_123'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Successfully toggled like for post.'
+              data:
+                type: object
+                schema:
+                  liked:
+                    type: boolean
+                    example: true
+        auth:
+          required: true
+        events:
+          - name: notification-like
+            payload:
+              type: like
+              entityId: string
+              userId: string
+
+      - method: GET
+        path: /posts/save
+        summary: Toggle save on a post
+        request:
+          query:
+            - name: postId
+              type: string
+              required: true
+              example: 'post_id_123'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Successfully toggled save for post.'
+              data:
+                type: object
+                schema:
+                  saved:
+                    type: boolean
+                    example: true
+        auth:
+          required: true
+
+  - name: comments
+    basePath: /comments
+    endpoints:
+      - method: POST
+        path: /comments/create
+        summary: Post a comment or reply
+        request:
+          body:
+            type: object
+            schema:
+              postId:
+                type: string
+                required: true
+              content:
+                type: string
+                required: true
+              parentId:
+                type: string
+                required: false
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Comment posted successfully.'
+              data:
+                type: object
+                schema:
+                  comment:
+                    type: object
+                    schema:
+                      id:
+                        type: string
+                      content:
+                        type: string
+                      user:
+                        type: object
+                        schema:
+                          id:
+                            type: string
+                          username:
+                            type: string
+                          avatar:
+                            type: string
+                      postId:
+                        type: string
+                      parentId:
+                        type: string
+                      createdAt:
+                        type: string
+        auth:
+          required: true
+        events:
+          - name: notification-comment
+            payload:
+              type: comment
+              entityId: string
+              userId: string
+
+      - method: GET
+        path: /comments/list
+        summary: Get list of comments for a post
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+            - name: postId
+              type: string
+              required: true
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched comments successfully.'
+              data:
+                type: object
+                schema:
+                  comments:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        content:
+                          type: string
+                        user:
+                          type: object
+                        replyCount:
+                          type: number
+                        mentions:
+                          type: array
+                          items:
+                            type: object
+                        createdAt:
+                          type: string
+                  cursor:
+                    type: string
+        auth:
+          required: true
+
+      - method: GET
+        path: /comments/replies
+        summary: Get list of replies for a comment
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+            - name: parentId
+              type: string
+              required: true
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched replies successfully.'
+              data:
+                type: object
+                schema:
+                  replies:
+                    type: array
+                    items:
+                      type: object
+                  cursor:
+                    type: string
+        auth:
+          required: true
+
+      - method: DELETE
+        path: /comments/:id
+        summary: Delete a comment
+        request:
+          params:
+            - name: id
+              type: string
+              required: true
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Comment deleted successfully.'
+        auth:
+          required: true
+
+  - name: media
+    basePath: /media
+    endpoints:
+      - method: GET
+        path: /media/avatar/url
+        summary: Get a presigned URL for avatar upload
+        request:
+          query:
+            - name: ext
+              type: string
+              required: true
+              example: 'png'
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+              data:
+                type: object
+                schema:
+                  url:
+                    type: string
+                    example: 'https://supabase.co/storage/v1/upload/sign/...'
+                  token:
+                    type: string
+                  path:
+                    type: string
+                    example: 'temp/user_id.png'
+        auth:
+          required: true
+
+      - method: POST
+        path: /media/avatar/uploaded
+        summary: Confirm avatar upload and start processing
+        request:
+          body:
+            type: object
+            schema:
+              path:
+                type: string
+                required: true
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Avatar processing started.'
+        auth:
+          required: true
+
+      - method: GET
+        path: /media/post/url
+        summary: Get a presigned URL for post media upload
+        request:
+          query:
+            - name: ext
+              type: string
+              required: true
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+              data:
+                type: object
+                schema:
+                  url:
+                    type: string
+                  path:
+                    type: string
+        auth:
+          required: true
+
+      - method: POST
+        path: /media/post/uploaded
+        summary: Create a post with uploaded media
+        request:
+          body:
+            type: object
+            schema:
+              content:
+                type: string
+                required: false
+              media:
+                type: array
+                items:
+                  type: object
+                  schema:
+                    path:
+                      type: string
+                      required: true
+                    type:
+                      type: string
+                      required: true
+                      enum: ['image', 'video']
+                    order:
+                      type: number
+                      required: true
+        response:
+          success:
+            status: 201
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Post processing started.'
+        auth:
+          required: true
+
+  - name: notifications
+    basePath: /notifications
+    endpoints:
+      - method: GET
+        path: /notifications/list
+        summary: Get list of notifications for current user
+        request:
+          query:
+            - name: limit
+              type: number
+              required: false
+            - name: cursor
+              type: string
+              required: false
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Fetched notfications successfully.'
+              data:
+                type: object
+                schema:
+                  notifications:
+                    type: array
+                    items:
+                      type: object
+                      schema:
+                        id:
+                          type: string
+                        userId:
+                          type: string
+                        type:
+                          type: string
+                        entityId:
+                          type: string
+                        read:
+                          type: boolean
+                        createdAt:
+                          type: string
+                  cursor:
+                    type: string
+                  unread:
+                    type: number
+                    example: 5
+        auth:
+          required: true
+
+      - method: GET
+        path: /notifications/read
+        summary: Mark all notifications as read
+        response:
+          success:
+            status: 200
+            schema:
+              success:
+                type: boolean
+                example: true
+              message:
+                type: string
+                example: 'Successfully marked notifications as read.'
+        auth:
+          required: true
