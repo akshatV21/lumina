@@ -31,13 +31,6 @@ export class PostsController {
     return { success: true, message: 'Saved posts fetched successfully.', data: { saved } }
   }
 
-  @Get(':id')
-  @Auth()
-  async httpGetPost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
-    const post = await this.postsService.post(id, user)
-    return { success: true, message: 'Post fetched successfully.', data: { post } }
-  }
-
   @Delete(':id')
   @Auth()
   async httpDeletePost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
@@ -57,5 +50,12 @@ export class PostsController {
   async httpSavePost(@Query() query: SaveQueryDto, @AuthUser() user: User): HttpResponse {
     const saved = await this.postsService.toggleSaved(query.postId, user.id)
     return { success: true, message: 'Successfully toggled save for post.', data: { saved } }
+  }
+
+  @Get(':id')
+  @Auth()
+  async httpGetPost(@Param('id') id: string, @AuthUser() user: User): HttpResponse {
+    const post = await this.postsService.post(id, user)
+    return { success: true, message: 'Post fetched successfully.', data: { post } }
   }
 }
