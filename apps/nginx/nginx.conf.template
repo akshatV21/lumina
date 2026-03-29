@@ -1,0 +1,117 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    server_tokens off;
+
+    map $http_origin $cors_origin {
+        default "$http_origin";
+    }
+
+    server {
+        # Railway injects the PORT dynamically
+        listen ${PORT};
+        server_name localhost;
+
+        add_header 'Access-Control-Allow-Origin' $cors_origin always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS, PATCH' always;
+        add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, Origin, User-Agent' always;
+
+        location /api/auth/ {
+            if ($request_method = 'OPTIONS') {
+                add_header 'Access-Control-Allow-Origin' $cors_origin always;
+                add_header 'Access-Control-Allow-Credentials' 'true' always;
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS, PATCH' always;
+                add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept, Origin, User-Agent' always;
+                add_header 'Content-Type' 'text/plain charset=UTF-8';
+                add_header 'Content-Length' 0;
+                return 204;
+            }
+
+            proxy_pass ${AUTH_URL}; 
+            
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/user {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+
+            proxy_pass ${AUTH_URL};
+            
+            # ... (keep your standard proxy_set_header block here)
+        }
+
+        location /api/media/ {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+
+            proxy_pass ${MEDIA_URL};
+            
+            # ... (keep your standard proxy_set_header block here)
+            client_max_body_size 50M; 
+        }
+
+        location /api/posts/ {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+
+            proxy_pass ${POSTS_URL};
+            
+            # ... (keep your standard proxy_set_header block here)
+            client_max_body_size 50M; 
+        }
+
+        location /api/comments/ {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+
+            proxy_pass ${POSTS_URL};
+            
+            # ... (keep your standard proxy_set_header block here)
+            client_max_body_size 50M; 
+        }
+
+        location /ws/gateway {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+            
+            proxy_pass ${GATEWAY_URL}; 
+        
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+
+            # ... (keep your standard proxy_set_header block here)
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        location /api/notifications/ {
+            if ($request_method = 'OPTIONS') {
+                # ... (keep your standard OPTIONS block here)
+                return 204;
+            }
+
+            proxy_pass ${NOTIFICATIONS_URL};
+            
+            # ... (keep your standard proxy_set_header block here)
+            client_max_body_size 50M; 
+        }
+    }
+}

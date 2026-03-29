@@ -37,6 +37,15 @@
         "tsConfigPath": "apps/media/tsconfig.app.json"
       }
     },
+    "nginx": {
+      "type": "application",
+      "root": "apps/nginx",
+      "entryFile": "main",
+      "sourceRoot": "apps/nginx/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/nginx/tsconfig.app.json"
+      }
+    },
     "notifications": {
       "type": "application",
       "root": "apps/notifications",
