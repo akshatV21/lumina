@@ -29,7 +29,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${AUTH_URL}; 
+            proxy_pass http://${AUTH_URL}; 
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -48,7 +48,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${AUTH_URL};
+            proxy_pass http://${AUTH_URL};
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -67,7 +67,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${MEDIA_URL};
+            proxy_pass http://${MEDIA_URL};
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -88,7 +88,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${POSTS_URL};
+            proxy_pass http://${POSTS_URL};
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -109,7 +109,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${POSTS_URL};
+            proxy_pass http://${POSTS_URL};
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -130,7 +130,7 @@ http {
                 return 204;
             }
             
-            proxy_pass ${GATEWAY_URL}; 
+            proxy_pass http://${GATEWAY_URL}; 
         
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -155,7 +155,7 @@ http {
                 return 204;
             }
 
-            proxy_pass ${NOTIFICATIONS_URL};
+            proxy_pass http://${NOTIFICATIONS_URL};
             
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
