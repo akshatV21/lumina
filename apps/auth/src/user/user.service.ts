@@ -258,4 +258,28 @@ export class UserService {
 
     return { followings: followings.map(f => f.following), cursor: nextCursor }
   }
+
+  async search(query: string, user: User) {
+    if (!query) return []
+
+    const users = await this.db.user.findMany({
+      where: {
+        username: {
+          contains: query,
+          mode: 'insensitive',
+        },
+        id: { not: user.id },
+      },
+      select: {
+        id: true,
+        username: true,
+        avatar: true,
+        bio: true,
+        type: true,
+      },
+      take: 20,
+    })
+
+    return users
+  }
 }

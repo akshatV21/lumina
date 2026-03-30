@@ -87,4 +87,11 @@ export class UserController {
     const res = await this.userService.followings(query, user)
     return { success: true, message: 'Fetched followings successfully.', data: res }
   }
+
+  @Get('search')
+  @Auth()
+  async httpSearch(@Query('q') query: string, @AuthUser() user: User): HttpResponse {
+    const users = await this.userService.search(query, user)
+    return { success: true, message: 'Users searched successfully.', data: { users } }
+  }
 }
